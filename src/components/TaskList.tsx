@@ -1,20 +1,19 @@
-import type { Task } from '../types/task';
 import TaskItem from './TaskItem';
+import { useTaskContext } from '../hooks/useTaskContext';
 
-interface TaskListProps {
-    tasks: Task[];
-    hasTasks: boolean;
-    onToggleTask: (id: Task['id']) => void;
-    onDeleteTask: (id: Task['id']) => void;
-}
+export default function TaskList() {
+    const { tasks, filter } = useTaskContext();
+    const filteredTasks = tasks.filter((task) => {
+        if (filter === 'completed') {
+            return task.completed;
+        }
+        if (filter === 'active') {
+            return !task.completed;
+        }
+        return true;
+    });
 
-export default function TaskList({
-                                     tasks,
-                                     hasTasks,
-                                     onToggleTask,
-                                     onDeleteTask,
-                                 }: TaskListProps) {
-    if (!hasTasks) {
+    if (tasks.length === 0) {
         return (
             <div className="alert alert-info" role="status">
                 <p className="mb-1">Завдань поки немає.</p>
@@ -23,7 +22,7 @@ export default function TaskList({
         );
     }
 
-    if (tasks.length === 0) {
+    if (filteredTasks.length === 0) {
         return (
             <p className="alert alert-info" role="status">
                 За цим фільтром завдань немає.
@@ -33,14 +32,7 @@ export default function TaskList({
 
     return (
         <ul className="list-unstyled d-grid gap-3">
-            {tasks.map((task) => (
-                <TaskItem
-                    key={task.id}
-                    task={task}
-                    onToggleTask={onToggleTask}
-                    onDeleteTask={onDeleteTask}
-                />
-            ))}
+            {filteredTasks.map((task) => <TaskItem key={task.id} task={task} />)}
         </ul>
     );
 }

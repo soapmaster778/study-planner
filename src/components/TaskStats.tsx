@@ -1,20 +1,14 @@
-import type { Task } from '../types/task';
+import { useTaskContext } from '../hooks/useTaskContext';
 
-interface TaskStatsProps {
-    tasks: Task[];
-}
-
-export default function TaskStats({ tasks }: TaskStatsProps) {
+export default function TaskStats() {
+    const { tasks } = useTaskContext();
     const total = tasks.length;
     const completed = tasks.filter((task) => task.completed).length;
     const active = total - completed;
 
     return (
         <section className="mb-4" aria-labelledby="stats-heading">
-            <h2 id="stats-heading" className="h4 mb-3">
-                Статистика
-            </h2>
-
+            <h2 id="stats-heading" className="h4 mb-3">Статистика</h2>
             <div className="row g-3" aria-live="polite">
                 <div className="col-sm-4">
                     <div className="card h-100">
@@ -24,7 +18,6 @@ export default function TaskStats({ tasks }: TaskStatsProps) {
                         </div>
                     </div>
                 </div>
-
                 <div className="col-sm-4">
                     <div className="card h-100">
                         <div className="card-body">
@@ -33,7 +26,6 @@ export default function TaskStats({ tasks }: TaskStatsProps) {
                         </div>
                     </div>
                 </div>
-
                 <div className="col-sm-4">
                     <div className="card h-100">
                         <div className="card-body">

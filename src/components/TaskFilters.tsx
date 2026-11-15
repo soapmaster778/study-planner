@@ -1,9 +1,5 @@
 import type { TaskFilter } from '../types/task';
-
-interface TaskFiltersProps {
-    currentFilter: TaskFilter;
-    onFilterChange: (filter: TaskFilter) => void;
-}
+import { useTaskContext } from '../hooks/useTaskContext';
 
 const filters: { value: TaskFilter; label: string }[] = [
     { value: 'all', label: 'Всі' },
@@ -11,29 +7,26 @@ const filters: { value: TaskFilter; label: string }[] = [
     { value: 'active', label: 'Не виконані' },
 ];
 
-export default function TaskFilters({
-                                        currentFilter,
-                                        onFilterChange,
-                                    }: TaskFiltersProps) {
+export default function TaskFilters() {
+    const { filter, setFilter } = useTaskContext();
+
     return (
         <div
             className="d-flex flex-wrap gap-2 mb-3"
             role="group"
             aria-label="Фільтри завдань"
         >
-            {filters.map((filter) => (
+            {filters.map((item) => (
                 <button
-                    key={filter.value}
+                    key={item.value}
                     type="button"
                     className={`btn ${
-                        currentFilter === filter.value
-                            ? 'btn-primary'
-                            : 'btn-outline-primary'
+                        filter === item.value ? 'btn-primary' : 'btn-outline-primary'
                     }`}
-                    aria-pressed={currentFilter === filter.value}
-                    onClick={() => onFilterChange(filter.value)}
+                    aria-pressed={filter === item.value}
+                    onClick={() => setFilter(item.value)}
                 >
-                    {filter.label}
+                    {item.label}
                 </button>
             ))}
         </div>

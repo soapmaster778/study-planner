@@ -19,7 +19,7 @@ function initializeTasks(): TaskState {
 
     return {
         tasks: stored.value,
-        pendingDelete: null,
+        pendingDeletes: [],
         loadError: stored.error,
     };
 }
@@ -46,7 +46,7 @@ export default function TaskProvider({ children }: { children: ReactNode }) {
     const [toast, setToast] = useState<ToastMessage | null>(() =>
         state.loadError ? makeToast(state.loadError, 'error') : null,
     );
-    const { tasks, pendingDelete } = state;
+    const { tasks, pendingDeletes } = state;
     const activeCount = tasks.filter((task) => !task.completed).length;
 
     useEffect(() => {
@@ -92,17 +92,13 @@ export default function TaskProvider({ children }: { children: ReactNode }) {
     }, [toast]);
 
     useEffect(() => {
-        if (!pendingDelete) {
-            return;
-        }
-
-        const timer = window.setTimeout(() => {
-            dispatch({ type: 'confirmDelete', token: pendingDelete.token });
+        const timers = pendingDeletes.map((pending) => window.setTimeout(() => {
+            dispatch({ type: 'confirmDelete', token: pending.token });
             setToast(makeToast('Завдання остаточно видалено.', 'success'));
-        }, Math.max(0, pendingDelete.expiresAt - Date.now()));
+        }, Math.max(0, pending.expiresAt - Date.now())));
 
-        return () => window.clearTimeout(timer);
-    }, [pendingDelete]);
+        return () => timers.forEach((timer) => window.clearTimeout(timer));
+    }, [pendingDeletes]);
 
     function reportError(message: string) {
         setToast(makeToast(message, 'error'));
@@ -114,7 +110,7 @@ export default function TaskProvider({ children }: { children: ReactNode }) {
             return false;
         }
 
-        if (pendingDelete?.taskId === id) {
+        if (pendingDeletes.some((pending) => pending.taskId === id)) {
             reportError('Спочатку скасуйте заплановане видалення цього завдання.');
             return false;
         }
@@ -164,11 +160,6 @@ export default function TaskProvider({ children }: { children: ReactNode }) {
     }
 
     function requestDelete(id: Task['id']) {
-        if (pendingDelete) {
-            reportError('Завершіть або скасуйте поточне видалення.');
-            return;
-        }
-
         if (!canChangeTask(id)) {
             return;
         }
@@ -188,13 +179,13 @@ export default function TaskProvider({ children }: { children: ReactNode }) {
         }
     }
 
-    function undoDelete() {
-        if (!pendingDelete) {
+    function undoDelete(token: string) {
+        if (!pendingDeletes.some((pending) => pending.token === token)) {
             reportError('Немає видалення, яке можна скасувати.');
             return;
         }
 
-        dispatch({ type: 'undoDelete', token: pendingDelete.token });
+        dispatch({ type: 'undoDelete', token });
         setToast(makeToast('Видалення скасовано.', 'info'));
     }
 
@@ -216,7 +207,7 @@ export default function TaskProvider({ children }: { children: ReactNode }) {
             tasks,
             filter,
             setFilter,
-            pendingDelete,
+            pendingDeletes,
             editingTaskId,
             filterError,
             toast,

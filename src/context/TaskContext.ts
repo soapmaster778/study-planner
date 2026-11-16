@@ -7,7 +7,7 @@ export interface TaskContextValue {
     tasks: Task[];
     filter: TaskFilter;
     setFilter: Dispatch<SetStateAction<TaskFilter>>;
-    pendingDelete: PendingDelete | null;
+    pendingDeletes: PendingDelete[];
     editingTaskId: Task['id'] | null;
     filterError: string | null;
     toast: ToastMessage | null;
@@ -15,7 +15,7 @@ export interface TaskContextValue {
     updateTask: (id: Task['id'], data: NewTask) => boolean;
     toggleTask: (id: Task['id']) => void;
     requestDelete: (id: Task['id']) => void;
-    undoDelete: () => void;
+    undoDelete: (token: string) => void;
     startEditing: (id: Task['id']) => void;
     cancelEditing: () => void;
     resetTasks: () => void;

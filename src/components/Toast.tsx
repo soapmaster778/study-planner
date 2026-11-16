@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTaskContext } from '../hooks/useTaskContext';
 import type { PendingDelete } from '../types/task';
 
-function DeleteCountdown({ pending }: { pending: PendingDelete }) {
+function DeleteCountdown({ pending, title }: { pending: PendingDelete; title: string }) {
     const { undoDelete } = useTaskContext();
     const [remaining, setRemaining] = useState(() =>
         Math.max(0, pending.expiresAt - Date.now()),
@@ -20,13 +20,14 @@ function DeleteCountdown({ pending }: { pending: PendingDelete }) {
     return (
         <div className="toast show border-warning shadow" role="status" aria-live="polite">
             <div className="toast-body">
-                <p className="fw-semibold mb-2">Завдання буде видалено</p>
+                <p className="fw-semibold mb-2 text-break">Буде видалено: {title}</p>
                 <div className="d-flex justify-content-between align-items-center gap-3">
                     <span aria-hidden="true">Залишилось: {Math.ceil(remaining / 1000)} с</span>
                     <button
                         type="button"
                         className="btn btn-warning btn-sm"
-                        onClick={undoDelete}
+                        onClick={() => undoDelete(pending.token)}
+                        aria-label={`Скасувати видалення: ${title}`}
                     >
                         Скасувати
                     </button>
@@ -34,7 +35,7 @@ function DeleteCountdown({ pending }: { pending: PendingDelete }) {
                 <div
                     className="progress mt-3"
                     role="progressbar"
-                    aria-label="Час до остаточного видалення"
+                    aria-label={`Час до видалення: ${title}`}
                     aria-valuemin={0}
                     aria-valuemax={100}
                     aria-valuenow={Math.round(progress)}
@@ -47,13 +48,20 @@ function DeleteCountdown({ pending }: { pending: PendingDelete }) {
 }
 
 export default function Toast() {
-    const { toast, pendingDelete, dismissToast } = useTaskContext();
+    const { tasks, toast, pendingDeletes, dismissToast } = useTaskContext();
 
     return (
-        <div className="toast-container position-fixed bottom-0 end-0 p-3">
-            {pendingDelete && (
-                <DeleteCountdown key={pendingDelete.token} pending={pendingDelete} />
-            )}
+        <div
+            className="toast-container position-fixed bottom-0 end-0 p-3 overflow-auto"
+            style={{ maxHeight: '100dvh' }}
+        >
+            {pendingDeletes.map((pending) => (
+                <DeleteCountdown
+                    key={pending.token}
+                    pending={pending}
+                    title={tasks.find((task) => task.id === pending.taskId)?.title ?? 'Завдання'}
+                />
+            ))}
             {toast && (
                 <div
                     key={toast.id}

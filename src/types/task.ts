@@ -21,7 +21,7 @@ export interface PendingDelete {
 
 export interface TaskState {
     tasks: Task[];
-    pendingDelete: PendingDelete | null;
+    pendingDeletes: PendingDelete[];
     loadError: string | null;
 }
 

@@ -33,7 +33,7 @@ Custom Hooks повторно використовують логіку дост
 | Persistence | Читання в initializer, запис у Effect, валідація JSON |
 | Заголовок вкладки | document.title в Effect із залежністю activeCount |
 | Toast | Власний компонент, автоматичне закриття, повідомлення помилок |
-| Undoable Delete | Один pendingDelete, 5 секунд, Undo та прогрес |
+| Undoable Delete | Масив pendingDeletes, незалежні таймери на 5 секунд, Undo та прогрес для кожного завдання |
 | Cleanup | clearTimeout і clearInterval при зміні операції та unmount |
 | Скидання | action reset, очищення pending deletion і режиму редагування |
 | Derived state | Фільтрація та статистика обчислюються під час render |

@@ -9,7 +9,7 @@ const task = {
 };
 
 function initialState() {
-    return { tasks: [{ ...task }], pendingDelete: null, loadError: null };
+    return { tasks: [{ ...task }], pendingDeletes: [], loadError: null };
 }
 
 const pending = { taskId: task.id, token: 'delete-1', expiresAt: 5000 };
@@ -41,7 +41,7 @@ test('requestDelete keeps tasks; pending task cannot be changed', () => {
     const state = initialState();
     const waiting = taskReducer(state, { type: 'requestDelete', pending });
     assert.equal(waiting.tasks, state.tasks);
-    assert.equal(waiting.pendingDelete, pending);
+    assert.deepEqual(waiting.pendingDeletes, [pending]);
     assert.equal(taskReducer(waiting, { type: 'toggle', id: task.id }), waiting);
     assert.equal(taskReducer(waiting, {
         type: 'update', id: task.id,
@@ -55,7 +55,7 @@ test('requestDelete keeps tasks; pending task cannot be changed', () => {
 test('undo keeps task and makes the old confirmation harmless', () => {
     const waiting = taskReducer(initialState(), { type: 'requestDelete', pending });
     const restored = taskReducer(waiting, { type: 'undoDelete', token: pending.token });
-    assert.equal(restored.pendingDelete, null);
+    assert.deepEqual(restored.pendingDeletes, []);
     assert.equal(restored.tasks.length, 1);
     assert.equal(taskReducer(restored, {
         type: 'confirmDelete', token: pending.token,
@@ -68,14 +68,14 @@ test('only a matching confirmation deletes the task', () => {
     assert.equal(taskReducer(waiting, { type: 'undoDelete', token: 'old' }), waiting);
     const deleted = taskReducer(waiting, { type: 'confirmDelete', token: pending.token });
     assert.deepEqual(deleted.tasks, []);
-    assert.equal(deleted.pendingDelete, null);
+    assert.deepEqual(deleted.pendingDeletes, []);
 });
 
 test('reset cancels deletion and copies initial tasks', () => {
     const waiting = taskReducer(initialState(), { type: 'requestDelete', pending });
     const originals = [{ ...task }];
     const reset = taskReducer(waiting, { type: 'reset', tasks: originals });
-    assert.equal(reset.pendingDelete, null);
+    assert.deepEqual(reset.pendingDeletes, []);
     assert.notEqual(reset.tasks, originals);
     assert.notEqual(reset.tasks[0], originals[0]);
     assert.equal(taskReducer(reset, { type: 'confirmDelete', token: pending.token }), reset);
@@ -90,6 +90,70 @@ test('nonexistent deletion is ignored and reducer is deterministic', () => {
         taskReducer(state, { type: 'requestDelete', pending }),
         taskReducer(state, { type: 'requestDelete', pending }),
     );
+});
+
+test('concurrent deletions retain independent deadlines and undo only their own task', () => {
+    const state = {
+        ...initialState(),
+        tasks: [{ ...task }, { ...task, id: 'second' }],
+    };
+    const second = { taskId: 'second', token: 'delete-2', expiresAt: 7000 };
+    const firstWaiting = taskReducer(state, { type: 'requestDelete', pending });
+    const bothWaiting = taskReducer(firstWaiting, {
+        type: 'requestDelete', pending: second,
+    });
+    assert.deepEqual(bothWaiting.pendingDeletes, [pending, second]);
+    assert.equal(bothWaiting.pendingDeletes[0], firstWaiting.pendingDeletes[0]);
+    assert.equal(bothWaiting.tasks, state.tasks);
+
+    const undone = taskReducer(bothWaiting, { type: 'undoDelete', token: pending.token });
+    assert.deepEqual(undone.pendingDeletes, [second]);
+    assert.equal(undone.tasks.length, 2);
+    assert.equal(taskReducer(undone, {
+        type: 'confirmDelete', token: pending.token,
+    }), undone);
+
+    const confirmed = taskReducer(undone, { type: 'confirmDelete', token: second.token });
+    assert.deepEqual(confirmed.tasks, [task]);
+    assert.deepEqual(confirmed.pendingDeletes, []);
+});
+
+test('concurrent confirmations work in either order without removing another pending operation', () => {
+    const second = { taskId: 'second', token: 'delete-2', expiresAt: 7000 };
+    for (const tokens of [[pending.token, second.token], [second.token, pending.token]]) {
+        let state = {
+            ...initialState(),
+            tasks: [{ ...task }, { ...task, id: 'second' }],
+        };
+        state = taskReducer(state, { type: 'requestDelete', pending });
+        state = taskReducer(state, { type: 'requestDelete', pending: second });
+        const firstConfirmed = taskReducer(state, { type: 'confirmDelete', token: tokens[0] });
+        assert.equal(firstConfirmed.tasks.length, 1);
+        assert.equal(firstConfirmed.pendingDeletes.length, 1);
+        assert.equal(firstConfirmed.pendingDeletes[0].token, tokens[1]);
+        const complete = taskReducer(firstConfirmed, { type: 'confirmDelete', token: tokens[1] });
+        assert.deepEqual(complete.tasks, []);
+        assert.deepEqual(complete.pendingDeletes, []);
+    }
+});
+
+test('duplicate tokens are rejected and reset invalidates all pending confirmations', () => {
+    let state = {
+        ...initialState(), tasks: [{ ...task }, { ...task, id: 'second' }],
+    };
+    state = taskReducer(state, { type: 'requestDelete', pending });
+    assert.equal(taskReducer(state, {
+        type: 'requestDelete', pending: { ...pending, taskId: 'second' },
+    }), state);
+    state = taskReducer(state, {
+        type: 'requestDelete',
+        pending: { taskId: 'second', token: 'delete-2', expiresAt: 7000 },
+    });
+    const reset = taskReducer(state, { type: 'reset', tasks: [task] });
+    assert.deepEqual(reset.pendingDeletes, []);
+    for (const token of [pending.token, 'delete-2']) {
+        assert.equal(taskReducer(reset, { type: 'confirmDelete', token }), reset);
+    }
 });
 
 test('stored tasks require valid fields, priorities and unique ids; empty list is valid', () => {

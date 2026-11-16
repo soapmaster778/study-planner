@@ -9,7 +9,7 @@ export function taskReducer(state: TaskState, action: TaskAction): TaskState {
             return { ...state, tasks: [...state.tasks, action.task] };
 
         case 'toggle':
-            if (state.pendingDelete?.taskId === action.id) {
+            if (state.pendingDeletes.some((pending) => pending.taskId === action.id)) {
                 return state;
             }
             return {
@@ -22,7 +22,7 @@ export function taskReducer(state: TaskState, action: TaskAction): TaskState {
             };
 
         case 'update':
-            if (state.pendingDelete?.taskId === action.id) {
+            if (state.pendingDeletes.some((pending) => pending.taskId === action.id)) {
                 return state;
             }
             return {
@@ -36,34 +36,45 @@ export function taskReducer(state: TaskState, action: TaskAction): TaskState {
 
         case 'requestDelete':
             if (
-                state.pendingDelete ||
+                state.pendingDeletes.some((pending) =>
+                    pending.taskId === action.pending.taskId ||
+                    pending.token === action.pending.token,
+                ) ||
                 !state.tasks.some((task) => task.id === action.pending.taskId)
             ) {
                 return state;
             }
-            return { ...state, pendingDelete: action.pending };
+            return {
+                ...state,
+                pendingDeletes: [...state.pendingDeletes, action.pending],
+            };
 
-        case 'confirmDelete':
-            if (state.pendingDelete?.token !== action.token) {
+        case 'confirmDelete': {
+            const pending = state.pendingDeletes.find((item) => item.token === action.token);
+            if (!pending) {
                 return state;
             }
             return {
                 ...state,
                 tasks: state.tasks.filter(
-                    (task) => task.id !== state.pendingDelete?.taskId,
+                    (task) => task.id !== pending.taskId,
                 ),
-                pendingDelete: null,
+                pendingDeletes: state.pendingDeletes.filter((item) => item.token !== action.token),
             };
+        }
 
         case 'undoDelete':
-            return state.pendingDelete?.token === action.token
-                ? { ...state, pendingDelete: null }
+            return state.pendingDeletes.some((pending) => pending.token === action.token)
+                ? {
+                    ...state,
+                    pendingDeletes: state.pendingDeletes.filter((pending) => pending.token !== action.token),
+                }
                 : state;
 
         case 'reset':
             return {
                 tasks: action.tasks.map((task) => ({ ...task })),
-                pendingDelete: null,
+                pendingDeletes: [],
                 loadError: null,
             };
     }

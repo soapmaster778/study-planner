@@ -14,8 +14,8 @@ const priorityClasses: Record<TaskPriority, string> = {
 };
 
 export default function TaskItem({ task }: { task: Task }) {
-    const { pendingDelete, toggleTask, requestDelete, startEditing } = useTaskContext();
-    const isPending = pendingDelete?.taskId === task.id;
+    const { pendingDeletes, toggleTask, requestDelete, startEditing } = useTaskContext();
+    const isPending = pendingDeletes.some((pending) => pending.taskId === task.id);
 
     return (
         <li className={`card shadow-sm ${
@@ -73,7 +73,7 @@ export default function TaskItem({ task }: { task: Task }) {
                         type="button"
                         className="btn btn-outline-danger btn-sm"
                         onClick={() => requestDelete(task.id)}
-                        disabled={pendingDelete !== null}
+                        disabled={isPending}
                         aria-label={`Видалити завдання: ${task.title}`}
                     >
                         Видалити
